@@ -1,0 +1,29 @@
+# Configuration (DO NOT COMMIT SENSITIVE TOKENS)
+config.json
+
+# Local Runtime States
+agy_state.json
+watcher_state.json
+test_crop.png
+
+# User Uploads & Media
+telegram_uploads/
+
+# Python Cache & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Temporary Files & OS Artifacts
+_temp_*
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
