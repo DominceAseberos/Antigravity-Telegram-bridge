@@ -30,12 +30,30 @@
 
 ---
 
-## 🚀 Quick Start (Under 2 Minutes)
+## ⚡ 1-Line Quick Install (Zero Git Cloning Needed)
+
+Run one command in your terminal. It installs the bridge, sets up dependencies, and launches the interactive setup wizard:
+
+### 🪟 Windows (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/DominceAseberos/Antigravity-Telegram-bridge/main/install.ps1 | iex
+```
+
+### 🍎 macOS & 🐧 Linux (Terminal)
+```bash
+curl -fsSL https://raw.githubusercontent.com/DominceAseberos/Antigravity-Telegram-bridge/main/install.sh | bash
+```
+
+> **What it does:** Installs to `~/.antigravity-telegram-bridge`, configures dependencies, runs the interactive setup wizard, and creates a global `antigravity-bridge` command and Desktop Shortcut with custom icon!
+
+---
+
+## 🛠️ Alternative: Manual Install
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/antigravity-telegram-bridge.git
-cd antigravity-telegram-bridge
+git clone https://github.com/DominceAseberos/Antigravity-Telegram-bridge.git
+cd Antigravity-Telegram-bridge
 ```
 
 ### 2. Install Dependencies
