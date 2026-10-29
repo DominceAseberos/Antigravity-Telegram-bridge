@@ -12,10 +12,12 @@ import json
 import time
 import subprocess
 import threading
+import shutil
 from typing import Optional
 
 from .config import (
     BASE_DIR,
+    USER_CONFIG_DIR,
     send_telegram_message,
     edit_telegram_message,
     send_telegram_chunked,
@@ -24,12 +26,59 @@ from .config import (
     send_telegram_action
 )
 
-AGY_STATE_FILE = os.path.join(BASE_DIR, "agy_state.json")
-PROJECTS_ROOT = os.path.dirname(BASE_DIR)  # C:\Users\user\OneDrive\Desktop\Projects
+def get_agy_state_file() -> str:
+    local_state = os.path.join(BASE_DIR, "agy_state.json")
+    if os.path.exists(local_state):
+        return local_state
+    os.makedirs(USER_CONFIG_DIR, exist_ok=True)
+    return os.path.join(USER_CONFIG_DIR, "agy_state.json")
+
+def find_agy_executable() -> str:
+    env_path = os.environ.get("AGY_PATH")
+    if env_path and os.path.exists(env_path):
+        return env_path
+    which = shutil.which("agy") or shutil.which("agy.exe") or shutil.which("antigravity")
+    if which:
+        return which
+    if os.name == "nt":
+        for p in [
+            os.path.expandvars(r"%LOCALAPPDATA%\agy\bin\agy.exe"),
+            os.path.expandvars(r"%USERPROFILE%\.gemini\antigravity-cli\bin\agy.exe"),
+            os.path.expandvars(r"%APPDATA%\npm\agy.cmd"),
+        ]:
+            if os.path.exists(p):
+                return p
+    for p in [
+        os.path.expanduser("~/.local/bin/agy"),
+        os.path.expanduser("~/.antigravity/bin/agy"),
+        os.path.expanduser("~/.gemini/antigravity-cli/bin/agy"),
+        "/usr/local/bin/agy",
+        "/opt/homebrew/bin/agy"
+    ]:
+        if os.path.exists(p):
+            return p
+    return "agy"
+
+def get_default_projects_root() -> str:
+    parent = os.path.dirname(BASE_DIR)
+    if os.path.basename(parent).lower() in ["projects", "workspace", "code", "dev"]:
+        return parent
+    for candidate in [
+        os.path.expanduser("~/OneDrive/Desktop/Projects"),
+        os.path.expanduser("~/Desktop/Projects"),
+        os.path.expanduser("~/Projects"),
+        os.path.expanduser("~/workspace"),
+        os.path.expanduser("~/dev"),
+        os.getcwd()
+    ]:
+        if os.path.isdir(candidate):
+            return candidate
+    return os.getcwd()
+
+AGY_STATE_FILE = get_agy_state_file()
+PROJECTS_ROOT = get_default_projects_root()
 UPLOADS_DIR = os.path.join(PROJECTS_ROOT, "telegram_uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
-
-AGY_EXE_PATH = os.path.expandvars(r"%LOCALAPPDATA%\agy\bin\agy.exe")
 
 MODEL_MAP = {
     "flash": "gemini-3.8-flash-high",
@@ -319,8 +368,9 @@ def execute_agy_turn(
         conv_id = None
         reset_conversation()
 
+    agy_bin = find_agy_executable()
     cmd = [
-        AGY_EXE_PATH,
+        agy_bin,
         "--dangerously-skip-permissions",
         "--output-format", "stream-json",
         "--model", model,
@@ -380,13 +430,40 @@ def execute_agy_turn(
                     step_type = su.get("step_type", "")
                     state_val = su.get("state", "")
                     delta = su.get("text_delta", "")
+                    tool_name = su.get("tool_name", "")
+                    tool_info = su.get("tool_info", {})
+                    params = tool_info.get("parameters", {}) if isinstance(tool_info, dict) else {}
 
                     if delta:
                         accumulated_text += delta
+                        current_status = "💬 Typing response..."
 
-                    if "tool" in step_type:
-                        tool_name = su.get("tool_name", "tool")
-                        current_status = f"⚙️ Tool: `{tool_name}`"
+                    if "tool" in step_type or tool_name:
+                        name = tool_name or (tool_info.get("name") if isinstance(tool_info, dict) else "tool")
+                        if state_val == "ACTIVE":
+                            if name in ("read_file", "view_file"):
+                                p = os.path.basename(params.get("Path", params.get("path", "")))
+                                current_status = f"📖 Reading `{p or 'file'}`..."
+                            elif name in ("write_to_file", "replace_file_content", "edit_file", "multi_replace_file_content"):
+                                p = os.path.basename(params.get("Path", params.get("path", "")))
+                                current_status = f"✏️ Editing `{p or 'file'}`..."
+                            elif name == "run_command":
+                                cmd_snippet = str(params.get("CommandLine", params.get("command", "")))[:35]
+                                current_status = f"💻 Running: `{cmd_snippet}`..."
+                            elif name == "search_web":
+                                q = str(params.get("query", ""))[:35]
+                                current_status = f"🌐 Searching web: \"{q}\"..."
+                            elif name in ("grep_search", "find_by_name", "list_dir"):
+                                current_status = f"🔍 Searching files..."
+                            elif name == "generate_image":
+                                current_status = f"🎨 Generating AI image..."
+                            else:
+                                current_status = f"⚙️ Executing `{name}`..."
+                        elif state_val == "DONE":
+                            current_status = "🧠 Thinking & planning next step..."
+
+                    elif step_type == "agent_response" and not accumulated_text:
+                        current_status = "🧠 Thinking & planning solution..."
 
                 elif event_type == "result":
                     res_data = evt.get("result", {})
@@ -397,13 +474,17 @@ def execute_agy_turn(
             except Exception:
                 pass
 
-            # Debounced edit every 1.8 seconds if text changed
+            # Debounced edit every 1.5 seconds so user sees live tool & thinking progress
             now = time.time()
-            if now - last_edit_time >= 1.8 and accumulated_text and status_msg_id:
-                display_chunk = accumulated_text[-2800:]  # Stay well within edit length limit
-                edit_text = f"⚡ *[{alias.upper()} | {proj_name}]*\n\n{display_chunk}"
-                if current_status:
-                    edit_text += f"\n\n_{current_status}_"
+            if now - last_edit_time >= 1.5 and status_msg_id:
+                if accumulated_text:
+                    display_chunk = accumulated_text[-2800:]
+                    edit_text = f"⚡ *[{alias.upper()} | {proj_name}]*\n\n{display_chunk}"
+                    if current_status:
+                        edit_text += f"\n\n_{current_status}_"
+                else:
+                    status_line = current_status or "🧠 Thinking..."
+                    edit_text = f"⚡ *[{alias.upper()} | {proj_name}]*\n\n_{status_line}_"
 
                 if edit_text != last_edited_text:
                     edit_telegram_message(token, chat_id, status_msg_id, edit_text)

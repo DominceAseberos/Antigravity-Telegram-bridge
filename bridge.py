@@ -51,36 +51,58 @@ from core.keyboards import (
 )
 from core.system_guard import capture_and_send_screenshot
 
-from ctypes import wintypes
-
-kernel32 = ctypes.windll.kernel32
-kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
-kernel32.CreateMutexW.restype = wintypes.HANDLE
-kernel32.GetLastError.argtypes = []
-kernel32.GetLastError.restype = wintypes.DWORD
-kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
-kernel32.CloseHandle.restype = wintypes.BOOL
-
+IS_WINDOWS = os.name == "nt"
 SINGLE_INSTANCE_MUTEX = None
+SINGLE_INSTANCE_FD = None
+
+if IS_WINDOWS:
+    from ctypes import wintypes
+    kernel32 = ctypes.windll.kernel32
+    kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
+    kernel32.CreateMutexW.restype = wintypes.HANDLE
+    kernel32.GetLastError.argtypes = []
+    kernel32.GetLastError.restype = wintypes.DWORD
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
 
 def acquire_single_instance_lock():
     """Guarantees only one instance of Antigravity Telegram Bridge runs at any time."""
-    global SINGLE_INSTANCE_MUTEX
-    ERROR_ALREADY_EXISTS = 183
-    SINGLE_INSTANCE_MUTEX = ctypes.windll.kernel32.CreateMutexW(
-        None, False, "AntigravityTelegramBridgeSingleInstanceMutex"
-    )
-    last_err = ctypes.windll.kernel32.GetLastError()
-    if last_err == ERROR_ALREADY_EXISTS:
-        print("⚠️ Another instance of Antigravity Telegram Bridge is already running. Exiting.", flush=True)
-        sys.exit(0)
+    global SINGLE_INSTANCE_MUTEX, SINGLE_INSTANCE_FD
+    if IS_WINDOWS:
+        ERROR_ALREADY_EXISTS = 183
+        SINGLE_INSTANCE_MUTEX = ctypes.windll.kernel32.CreateMutexW(
+            None, False, "AntigravityTelegramBridgeSingleInstanceMutex"
+        )
+        last_err = ctypes.windll.kernel32.GetLastError()
+        if last_err == ERROR_ALREADY_EXISTS:
+            print("⚠️ Another instance of Antigravity Telegram Bridge is already running. Exiting.", flush=True)
+            sys.exit(0)
+    else:
+        try:
+            import fcntl
+            lock_file = "/tmp/antigravity_bridge.lock"
+            SINGLE_INSTANCE_FD = open(lock_file, "w")
+            fcntl.flock(SINGLE_INSTANCE_FD, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (IOError, BlockingIOError):
+            print("⚠️ Another instance of Antigravity Telegram Bridge is already running. Exiting.", flush=True)
+            sys.exit(0)
+        except Exception:
+            pass
 
 def release_single_instance_lock():
-    """Releases the single-instance mutex."""
-    global SINGLE_INSTANCE_MUTEX
-    if SINGLE_INSTANCE_MUTEX:
+    """Releases the single-instance lock."""
+    global SINGLE_INSTANCE_MUTEX, SINGLE_INSTANCE_FD
+    if IS_WINDOWS and SINGLE_INSTANCE_MUTEX:
         ctypes.windll.kernel32.CloseHandle(SINGLE_INSTANCE_MUTEX)
         SINGLE_INSTANCE_MUTEX = None
+    elif SINGLE_INSTANCE_FD:
+        try:
+            import fcntl
+            fcntl.flock(SINGLE_INSTANCE_FD, fcntl.LOCK_UN)
+            SINGLE_INSTANCE_FD.close()
+        except Exception:
+            pass
+        SINGLE_INSTANCE_FD = None
 
 def restart_bridge():
     """Restarts the Python bridge process cleanly (relies on run_bridge.bat loop)."""
@@ -125,9 +147,7 @@ def start_file_watcher(token, get_chat_id_func):
                 time.sleep(1.0)
                 last_mtime = get_watched_files_mtime()
                 print("🔄 Code change detected in core architecture! Auto-reloading bridge...", flush=True)
-                chat_id = get_chat_id_func()
-                if chat_id:
-                    send_telegram_message(token, chat_id, "⚡ *Update detected:* Antigravity Bridge is auto-reloading on your PC...")
+                # Restart bridge silently without spamming Telegram
                 restart_bridge()
         except Exception:
             pass

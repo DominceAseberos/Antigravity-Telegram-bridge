@@ -48,30 +48,58 @@ curl -fsSL https://raw.githubusercontent.com/DominceAseberos/Antigravity-Telegra
 
 ---
 
-## 🛠️ Alternative: Manual Install
+## 📦 Installation Options
 
-### 1. Clone the Repository
+### 1️⃣ Pip Install (Any OS with Python)
+Install directly from GitHub as a global command on Windows, macOS, or Linux:
+```bash
+pip install git+https://github.com/DominceAseberos/Antigravity-Telegram-bridge.git
+```
+Then simply run:
+```bash
+antigravity-bridge --setup
+```
+
+---
+
+### 2️⃣ 1-Line Terminal Installers (Automated Setup)
+
+#### 🪟 Windows (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/DominceAseberos/Antigravity-Telegram-bridge/main/install.ps1 | iex
+```
+
+#### 🍎 macOS & 🐧 Linux (Terminal)
+```bash
+curl -fsSL https://raw.githubusercontent.com/DominceAseberos/Antigravity-Telegram-bridge/main/install.sh | bash
+```
+
+> **What it does:** Clones to `~/.antigravity-telegram-bridge`, installs dependencies, registers global commands (`antigravity-bridge` and `agy-bridge`), and starts the setup wizard.
+
+---
+
+### 3️⃣ Local Clone / Development Install
 ```bash
 git clone https://github.com/DominceAseberos/Antigravity-Telegram-bridge.git
 cd Antigravity-Telegram-bridge
+pip install -e .
+antigravity-bridge --setup
 ```
 
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
+---
 
-### 3. Run the Interactive Setup Wizard
-```bash
-python setup.py
-```
+## 💻 CLI Commands (Run from Any Terminal)
 
-The interactive wizard will:
-1. 🌐 Prompt you to create a free bot via [@BotFather](https://t.me/BotFather) (or enter an existing token).
-2. 🔑 Verify and test your token against Telegram API.
-3. 📱 Open your new bot directly in Telegram Web or App for 1-tap pairing.
-4. 🖥️ *(Optional)* Create a Desktop App Shortcut with the custom icon.
-5. 🚀 Launch the bridge!
+Once installed, you can use these commands from **any folder** on your machine:
+
+| Command | Description |
+| :--- | :--- |
+| **`antigravity-bridge`** | Starts the Telegram bridge background server |
+| **`agy-bridge`** | Short alias for `antigravity-bridge` |
+| **`antigravity-bridge status`** | Displays active config, bot token status, and AGY engine state |
+| **`antigravity-bridge setup`** | Launches the interactive Telegram token & shortcut wizard |
+| **`antigravity-bridge doctor`** | Runs diagnostic health check on Python, agy binary, and Telegram |
+| **`antigravity-bridge --version`** | Displays the current bridge version |
 
 ---
 

@@ -44,21 +44,22 @@ if (Test-Path $installDir) {
     }
 }
 
-# 3. Install Dependencies
-Write-Host "⏳ Installing required Python dependencies..." -ForegroundColor DarkGray
-python -m pip install -r (Join-Path $installDir "requirements.txt") --quiet --disable-pip-version-check
+# 3. Install Package & Dependencies
+Write-Host "⏳ Installing dependencies and registering CLI commands..." -ForegroundColor DarkGray
+python -m pip install -e $installDir --quiet --disable-pip-version-check
 
-# 4. Create Global CLI Launcher
+# 4. Create Global Windows Command Wrappers
 $localBin = Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps"
-$cmdLauncher = Join-Path $localBin "antigravity-bridge.cmd"
 if (Test-Path $localBin) {
-    "@echo off`r`npython `"$installDir\bridge.py`" %*" | Out-File -FilePath $cmdLauncher -Encoding ascii -Force
+    "@echo off`r`npython `"$installDir\core\cli.py`" %*" | Out-File -FilePath (Join-Path $localBin "antigravity-bridge.cmd") -Encoding ascii -Force
+    "@echo off`r`npython `"$installDir\core\cli.py`" %*" | Out-File -FilePath (Join-Path $localBin "agy-bridge.cmd") -Encoding ascii -Force
 }
 
 Write-Host "✅ Installation complete!" -ForegroundColor Green
+Write-Host "💡 Commands available anywhere in terminal: 'antigravity-bridge' and 'agy-bridge'" -ForegroundColor Cyan
 Write-Host ""
 
 # 5. Run Interactive Setup Wizard
 Push-Location $installDir
-python setup.py
+python wizard.py
 Pop-Location

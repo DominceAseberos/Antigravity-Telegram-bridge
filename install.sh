@@ -39,22 +39,26 @@ else
     fi
 fi
 
-# 3. Install Dependencies
-echo "⏳ Installing required Python dependencies..."
-python3 -m pip install -r "$INSTALL_DIR/requirements.txt" --quiet
+# 3. Install Package & Dependencies
+echo "⏳ Installing dependencies and registering CLI commands..."
+python3 -m pip install -e "$INSTALL_DIR" --quiet
 
 # 4. Create Global CLI Launcher
 mkdir -p "$HOME/.local/bin"
 LAUNCHER="$HOME/.local/bin/antigravity-bridge"
 cat << 'EOF' > "$LAUNCHER"
 #!/usr/bin/env bash
-python3 "$HOME/.antigravity-telegram-bridge/bridge.py" "$@"
+python3 -m core.cli "$@"
 EOF
 chmod +x "$LAUNCHER"
 
+# Symlink agy-bridge
+ln -sf "$LAUNCHER" "$HOME/.local/bin/agy-bridge"
+
 echo "✅ Installation complete!"
+echo "💡 Commands available anywhere: 'antigravity-bridge' and 'agy-bridge'"
 echo ""
 
 # 5. Run Interactive Setup Wizard
 cd "$INSTALL_DIR"
-python3 setup.py
+python3 wizard.py

@@ -5,8 +5,28 @@ import time
 import requests
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
-WATCHER_STATE_FILE = os.path.join(BASE_DIR, "watcher_state.json")
+USER_CONFIG_DIR = os.path.expanduser("~/.antigravity-telegram-bridge")
+
+def get_config_path() -> str:
+    """Returns the config file path, prioritizing local directory then user profile."""
+    local_cfg = os.path.join(BASE_DIR, "config.json")
+    if os.path.exists(local_cfg):
+        return local_cfg
+    env_cfg = os.environ.get("ANTIGRAVITY_CONFIG")
+    if env_cfg and os.path.exists(env_cfg):
+        return env_cfg
+    os.makedirs(USER_CONFIG_DIR, exist_ok=True)
+    return os.path.join(USER_CONFIG_DIR, "config.json")
+
+def get_watcher_state_path() -> str:
+    local_state = os.path.join(BASE_DIR, "watcher_state.json")
+    if os.path.exists(local_state):
+        return local_state
+    os.makedirs(USER_CONFIG_DIR, exist_ok=True)
+    return os.path.join(USER_CONFIG_DIR, "watcher_state.json")
+
+CONFIG_FILE = get_config_path()
+WATCHER_STATE_FILE = get_watcher_state_path()
 
 def load_config() -> dict:
     if os.path.exists(CONFIG_FILE):
