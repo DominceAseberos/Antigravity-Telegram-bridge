@@ -191,17 +191,19 @@ def handle_incoming_message(token: str, msg: dict, cfg: dict, restart_func):
             send_telegram_message(token, chat_id, f"⚠️ Error processing photo: {e}")
         return
 
-    # Handle Voice Note / Audio Message
-    voice = msg.get("voice") or msg.get("audio")
+    # Handle Voice Note / Video Note / Audio Message
+    voice = msg.get("voice") or msg.get("audio") or msg.get("video_note")
     if voice:
         file_id = voice["file_id"]
-        send_telegram_message(token, chat_id, "🎙️ Downloading & transcribing voice note...")
+        is_video = "video_note" in msg
+        send_telegram_message(token, chat_id, "🎥 Transcribing video note audio..." if is_video else "🎙️ Downloading & transcribing voice note...")
         try:
             r = requests.get(f"https://api.telegram.org/bot{token}/getFile", params={"file_id": file_id}, timeout=15, verify=False)
             file_path = r.json()["result"]["file_path"]
             voice_bytes = requests.get(f"https://api.telegram.org/file/bot{token}/{file_path}", timeout=30, verify=False).content
 
-            voice_filename = f"voice_{int(time.time())}.oga"
+            ext = ".mp4" if is_video else ".oga"
+            voice_filename = f"voice_{int(time.time())}{ext}"
             voice_path = os.path.join(UPLOADS_DIR, voice_filename)
             with open(voice_path, "wb") as f:
                 f.write(voice_bytes)
@@ -217,7 +219,7 @@ def handle_incoming_message(token: str, msg: dict, cfg: dict, restart_func):
             else:
                 send_telegram_message(token, chat_id, f"⚠️ Voice transcription error: {transcribed_text or 'No speech detected'}")
         except Exception as e:
-            send_telegram_message(token, chat_id, f"⚠️ Error processing voice note: {e}")
+            send_telegram_message(token, chat_id, f"⚠️ Error processing audio: {e}")
         return
 
     if not text:
