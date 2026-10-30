@@ -174,15 +174,6 @@ chmod +x run_bridge.sh
 
 ---
 
-## 🎬 Promotional Video Production (`agy_promo`)
-
-A code-driven promotional video for this project is built with **Remotion (React/TypeScript)** and located in:
-- **Project Path:** `Projects/video_studio/agy_promo/`
-- **Documentation:** See [`agy_promo/README.md`](../video_studio/agy_promo/README.md)
-- **Features:** 16:9 widescreen desktop view, modular Input/Output cards, simulated direct-touch clicks, privacy-preserving AI voice waveforms, and synchronized 44.1kHz sound effects.
-
----
-
 ## ⚖️ License & Trademarks
 
 - **License:** Released under the [MIT License](LICENSE).
