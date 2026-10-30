@@ -83,8 +83,21 @@ curl -fsSL https://raw.githubusercontent.com/DominceAseberos/Antigravity-Telegra
 git clone https://github.com/DominceAseberos/Antigravity-Telegram-bridge.git
 cd Antigravity-Telegram-bridge
 pip install -e .
-antigravity-bridge --setup
+antigravity-bridge setup
 ```
+
+---
+
+## 🤖 Setting Up Your Telegram Bot (Takes 30 Seconds)
+
+When you run the 1-line installer or `antigravity-bridge setup`, the built-in interactive wizard guides you through this automatically (and even opens @BotFather in your browser):
+
+1. **Open [@BotFather](https://t.me/BotFather)** in Telegram (the official Telegram bot creator).
+2. Send **`/newbot`**.
+3. Choose a **Name** (e.g., `My Antigravity`) and a **Username** ending in `bot` (e.g., `my_antigravity_bot`).
+4. Copy the **HTTP API Token** that BotFather sends you.
+5. Paste it into the installer terminal prompt — the wizard will verify it instantly.
+6. Open your new bot in Telegram and send **`/start`** — the bridge will pair and lock exclusively to your Telegram user ID!
 
 ---
 
